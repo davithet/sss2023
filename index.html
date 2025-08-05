@@ -55,7 +55,6 @@ function renderTable(data) {
     html += '<tr>';
     headers.forEach(h => {
       let cell = row[h];
-      // თუ არის სურათი
       if (typeof cell === 'string' && (cell.endsWith('.jpg') || cell.endsWith('.png'))) {
         cell = `<img src="${cell}" alt="სურათი">`;
       }
