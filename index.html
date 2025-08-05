@@ -2,40 +2,30 @@
 <html lang="ka">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>მონაცემების ძიება</title>
+<title>Excel მონაცემების ძიება CSV-დან</title>
 <style>
-  body { font-family: Arial, sans-serif; padding: 20px; }
-  input[type="text"] { width: 300px; padding: 8px; margin-bottom: 10px; }
-  table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+  body { font-family: Arial; padding: 20px; }
+  input { padding: 8px; width: 300px; margin-bottom: 15px; }
+  table { border-collapse: collapse; width: 100%; }
   th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-  tr:hover { background-color: #f5f5f5; }
   img { max-width: 100px; max-height: 80px; }
 </style>
 </head>
 <body>
 
-<h2>მონაცემების ძიება</h2>
+<h2>მონაცემების ძიება Excel-ის მიხედვით</h2>
 <input type="text" id="searchInput" placeholder="გაიწერეთ სახელი, გვარი, ციფრი..." />
 
 <table id="dataTable">
-  <thead>
-    <tr id="tableHeader"></tr>
-  </thead>
+  <thead><tr id="tableHeader"></tr></thead>
   <tbody id="tableBody"></tbody>
 </table>
 
 <script>
-// მოდელი: ვადამონაცემები CSV ფაილიდან
-const csvData = `სახელი,გვარი,ასაკი,ფოტო
-გიორგი,ბევრია,30,images/giorgi1.jpg
-მარიამ,მცირია,25,
-ლაშა,საშინელი,NaN,images/lasha.jpg
-ნინო,მცირია,27,images/nino.jpg
-გურამი,საშინელი,40,
-`;
+// აქ დაიმატე შენი CSV ფაილის URL (ფაილი უნდა იყოს შენს რეპოზიტორიაში)
+const csvFilePath = 'data.csv';
 
-// CSV-ს გადაყვანა ობიექტებად
+// CSV-ს გადაყვანა ობიექტებში
 function csvToArray(str, delimiter = ",") {
   const lines = str.trim().split("\n");
   const headers = lines[0].split(delimiter);
@@ -49,14 +39,25 @@ function csvToArray(str, delimiter = ",") {
   });
 }
 
-const data = csvToArray(csvData);
-
 // DOM ელემენტები
-const searchInput = document.getElementById("searchInput");
-const tableHeader = document.getElementById("tableHeader");
-const tableBody = document.getElementById("tableBody");
+const searchInput = document.getElementById('searchInput');
+const tableHeader = document.getElementById('tableHeader');
+const tableBody = document.getElementById('tableBody');
 
-// ცხრილის კოდი (სათაურის ჩათვლით)
+let data = [];
+
+// CSV-ის ჩატვირთვა და დანახვა
+fetch(csvFilePath)
+  .then(response => response.text())
+  .then(text => {
+    data = csvToArray(text);
+    renderTable(data);
+  })
+  .catch(err => {
+    tableBody.innerHTML = '<tr><td colspan="100%">მონაცემები ვერ ჩაიტვირთა</td></tr>';
+  });
+
+// ცხრილის გენერირება
 function renderTable(rows) {
   tableBody.innerHTML = "";
   if (rows.length === 0) {
@@ -64,52 +65,43 @@ function renderTable(rows) {
     return;
   }
   
-  // თუ ჯერ არ არის სათაური გაკეთებული
-  if (tableHeader.children.length === 0) {
+  if (tableHeader.children.length === 0 && rows.length > 0) {
     for (const key in rows[0]) {
       tableHeader.innerHTML += `<th>${key}</th>`;
     }
   }
   
   rows.forEach(row => {
-    const tr = document.createElement("tr");
+    const tr = document.createElement('tr');
     for (const key in row) {
-      let value = row[key];
-      if (value === "NaN" || value === "") {
-        value = ""; // ცარიელი არაჩამოყვანილი
-      }
-      // თუ ველი არის ფოტო, გამოაჩინე სურათი
-      if (key === "ფოტო" && value) {
-        const imgTag = `<img src="${value}" alt="ფოტო" />`;
-        tr.innerHTML += `<td>${imgTag}</td>`;
+      let val = row[key];
+      if(val === "NaN" || val === "") val = "";
+      
+      // თუ არის სურათი, გამოაჩინე img tag
+      if(key.toLowerCase().includes('ფოტო') && val) {
+        tr.innerHTML += `<td><img src="${val}" alt="ფოტო"/></td>`;
       } else {
-        tr.innerHTML += `<td>${value}</td>`;
+        tr.innerHTML += `<td>${val}</td>`;
       }
     }
     tableBody.appendChild(tr);
   });
 }
 
-// საძიებო ფუნქცია
+// საძიების ფუნქცია
 function filterData(query) {
-  if (!query) return data;
+  if(!query) return data;
   query = query.toLowerCase();
-  // ფილტრაცია ყველა ველზე
-  return data.filter(row => {
-    return Object.values(row).some(value => 
-      value && value.toLowerCase().includes(query)
-    );
-  });
+  return data.filter(row => 
+    Object.values(row).some(val => val && val.toLowerCase().includes(query))
+  );
 }
 
-// საძიებლის ივენთი
-searchInput.addEventListener("input", e => {
+// საძიებო ველის ევენთი
+searchInput.addEventListener('input', e => {
   const filtered = filterData(e.target.value);
   renderTable(filtered);
 });
-
-// თავდაპირველი ცხრილი
-renderTable(data);
 </script>
 
 </body>
