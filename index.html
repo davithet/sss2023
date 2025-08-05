@@ -1,107 +1,85 @@
 <!DOCTYPE html>
 <html lang="ka">
 <head>
-<meta charset="UTF-8" />
-<title>Excel მონაცემების ძიება CSV-დან</title>
-<style>
-  body { font-family: Arial; padding: 20px; }
-  input { padding: 8px; width: 300px; margin-bottom: 15px; }
-  table { border-collapse: collapse; width: 100%; }
-  th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-  img { max-width: 100px; max-height: 80px; }
-</style>
+  <meta charset="UTF-8">
+  <title>Excel Viewer ძიებით</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    input { margin-bottom: 10px; padding: 8px; width: 300px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+    th, td { border: 1px solid #ccc; padding: 6px; }
+    img { max-width: 100px; max-height: 80px; }
+  </style>
 </head>
 <body>
 
-<h2>მონაცემების ძიება Excel-ის მიხედვით</h2>
-<input type="text" id="searchInput" placeholder="გაიწერეთ სახელი, გვარი, ციფრი..." />
-
-<table id="dataTable">
-  <thead><tr id="tableHeader"></tr></thead>
-  <tbody id="tableBody"></tbody>
-</table>
+<h2>მონაცემების ძიება Excel-დან</h2>
+<input type="text" id="searchInput" placeholder="სახელი, გვარი, რიცხვი..." />
+<div id="tableContainer">იტვირთება...</div>
 
 <script>
-// აქ დაიმატე შენი CSV ფაილის URL (ფაილი უნდა იყოს შენს რეპოზიტორიაში)
-const csvFilePath = 'data.csv';
+const EXCEL_FILE = 'data.xlsx'; // შენს რეპოში ატვირთე ეს ფაილი
 
-// CSV-ს გადაყვანა ობიექტებში
-function csvToArray(str, delimiter = ",") {
-  const lines = str.trim().split("\n");
-  const headers = lines[0].split(delimiter);
-  return lines.slice(1).map(line => {
-    const data = line.split(delimiter);
-    let obj = {};
-    headers.forEach((header, i) => {
-      obj[header] = data[i] ? data[i].trim() : "";
+function loadExcelFile(url) {
+  fetch(url)
+    .then(res => res.arrayBuffer())
+    .then(ab => {
+      const workbook = XLSX.read(ab, { type: 'array' });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+      renderTable(json);
+    })
+    .catch(err => {
+      document.getElementById('tableContainer').innerText = 'ფაილის წაკითხვა ვერ მოხერხდა.';
+      console.error(err);
     });
-    return obj;
-  });
 }
 
-// DOM ელემენტები
-const searchInput = document.getElementById('searchInput');
-const tableHeader = document.getElementById('tableHeader');
-const tableBody = document.getElementById('tableBody');
+function renderTable(data) {
+  const container = document.getElementById('tableContainer');
+  const searchInput = document.getElementById('searchInput');
 
-let data = [];
-
-// CSV-ის ჩატვირთვა და დანახვა
-fetch(csvFilePath)
-  .then(response => response.text())
-  .then(text => {
-    data = csvToArray(text);
-    renderTable(data);
-  })
-  .catch(err => {
-    tableBody.innerHTML = '<tr><td colspan="100%">მონაცემები ვერ ჩაიტვირთა</td></tr>';
-  });
-
-// ცხრილის გენერირება
-function renderTable(rows) {
-  tableBody.innerHTML = "";
-  if (rows.length === 0) {
-    tableBody.innerHTML = "<tr><td colspan='100%'>მონაცემი ვერ მოიძებნა</td></tr>";
+  if (!data.length) {
+    container.innerHTML = 'ცხრილი ცარიელია.';
     return;
   }
-  
-  if (tableHeader.children.length === 0 && rows.length > 0) {
-    for (const key in rows[0]) {
-      tableHeader.innerHTML += `<th>${key}</th>`;
-    }
-  }
-  
-  rows.forEach(row => {
-    const tr = document.createElement('tr');
-    for (const key in row) {
-      let val = row[key];
-      if(val === "NaN" || val === "") val = "";
-      
-      // თუ არის სურათი, გამოაჩინე img tag
-      if(key.toLowerCase().includes('ფოტო') && val) {
-        tr.innerHTML += `<td><img src="${val}" alt="ფოტო"/></td>`;
-      } else {
-        tr.innerHTML += `<td>${val}</td>`;
+
+  // ცხრილის ჰედერი
+  const headers = Object.keys(data[0]);
+  let html = '<table><thead><tr>';
+  headers.forEach(h => html += `<th>${h}</th>`);
+  html += '</tr></thead><tbody id="tableBody">';
+
+  data.forEach(row => {
+    html += '<tr>';
+    headers.forEach(h => {
+      let cell = row[h];
+      // თუ არის სურათი
+      if (typeof cell === 'string' && (cell.endsWith('.jpg') || cell.endsWith('.png'))) {
+        cell = `<img src="${cell}" alt="სურათი">`;
       }
-    }
-    tableBody.appendChild(tr);
+      html += `<td>${cell}</td>`;
+    });
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+
+  // საძიებელი
+  searchInput.addEventListener('input', () => {
+    const filter = searchInput.value.toLowerCase();
+    const tbody = document.getElementById('tableBody');
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(row => {
+      const text = row.innerText.toLowerCase();
+      row.style.display = text.includes(filter) ? '' : 'none';
+    });
   });
 }
 
-// საძიების ფუნქცია
-function filterData(query) {
-  if(!query) return data;
-  query = query.toLowerCase();
-  return data.filter(row => 
-    Object.values(row).some(val => val && val.toLowerCase().includes(query))
-  );
-}
-
-// საძიებო ველის ევენთი
-searchInput.addEventListener('input', e => {
-  const filtered = filterData(e.target.value);
-  renderTable(filtered);
-});
+loadExcelFile(EXCEL_FILE);
 </script>
 
 </body>
