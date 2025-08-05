@@ -19,7 +19,7 @@
 <div id="tableContainer">იტვირთება...</div>
 
 <script>
-const EXCEL_FILE = 'data.xlsx'; // შენს რეპოში ატვირთე ეს ფაილი
+const EXCEL_FILE = 'data.xlsx';
 
 function loadExcelFile(url) {
   fetch(url)
@@ -45,7 +45,6 @@ function renderTable(data) {
     return;
   }
 
-  // ცხრილის ჰედერი
   const headers = Object.keys(data[0]);
   let html = '<table><thead><tr>';
   headers.forEach(h => html += `<th>${h}</th>`);
@@ -66,7 +65,6 @@ function renderTable(data) {
   html += '</tbody></table>';
   container.innerHTML = html;
 
-  // საძიებელი
   searchInput.addEventListener('input', () => {
     const filter = searchInput.value.toLowerCase();
     const tbody = document.getElementById('tableBody');
