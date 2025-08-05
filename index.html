@@ -15,25 +15,23 @@
 
     <h2>მონაცემების ძიება</h2>
     <input type="text" id="search" placeholder="მოძებნე სახელი, გვარი, ციფრი...">
-
     <div id="unique-selector" style="margin-top:10px;"></div>
     <table id="data-table"></table>
+
+    <!-- SheetJS ბიბლიოთეკა -->
+    <script src="xlsx.full.min.js"></script>
 
     <script>
         let data = [];
 
-        async function loadCSV() {
-            const response = await fetch('data.csv');
-            const text = await response.text();
-            const rows = text.split('\n').map(row => row.split(','));
-
-            const headers = rows[0];
-            data = rows.slice(1).map(row => {
-                let obj = {};
-                headers.forEach((h, i) => obj[h.trim()] = (row[i] || "").trim());
-                return obj;
-            });
-
+        async function loadExcel() {
+            const response = await fetch('data.xlsx');
+            const arrayBuffer = await response.arrayBuffer();
+            const workbook = XLSX.read(arrayBuffer, { type: "array" });
+            const sheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[sheetName];
+            const json = XLSX.utils.sheet_to_json(worksheet);
+            data = json;
             displayTable(data);
         }
 
@@ -60,7 +58,7 @@
                 headers.forEach(h => {
                     const td = document.createElement('td');
                     let val = row[h];
-                    if (val && (val.toLowerCase().endsWith('.jpg') || val.toLowerCase().endsWith('.png'))) {
+                    if (val && (typeof val === 'string') && (val.toLowerCase().endsWith('.jpg') || val.toLowerCase().endsWith('.png'))) {
                         const img = document.createElement('img');
                         img.src = val;
                         td.appendChild(img);
@@ -76,13 +74,15 @@
         document.getElementById('search').addEventListener('input', function () {
             const query = this.value.toLowerCase();
             const matches = data.filter(row =>
-                Object.values(row).some(val => val && val.toLowerCase().includes(query))
+                Object.values(row).some(val =>
+                    val && val.toString().toLowerCase().includes(query)
+                )
             );
 
             const firstNames = matches.map(row => row["სახელი"]).filter(n => n);
             const lastNames = matches.map(row => row["გვარი"]).filter(n => n);
-
             const uniqueLastNames = [...new Set(lastNames)];
+
             const selectorDiv = document.getElementById('unique-selector');
             selectorDiv.innerHTML = '';
 
@@ -111,7 +111,7 @@
             displayTable(matches);
         });
 
-        loadCSV();
+        loadExcel();
     </script>
 </body>
 </html>
